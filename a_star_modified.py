@@ -6,29 +6,36 @@ import time
 import numpy as np
 
 from matplotlib.patches import Rectangle
-
+import math
 import point
-import random_map
+import fixed_map
+
 
 # 小结：强波的这种写法，是一种很简单的考虑：
 # 每一步选择最优的路径，不更新原来的路径，不重复以前的路径，
 # 每一个节点的成本（实际成本+估计成本）都是独立的，与历史路径没有关系
+# 总结：可以这么理解强波的算法。就是一种广度优先的搜索算法，每一步选择距离最近的点走。
+# 1、所有的点代价值可以提前计算出来，并且不变
+# 2、每一步扩大了可行走的区域，在这些区域里面选择一个最优的来走。直到找到目标点。
+# 3、回溯的时候，就只关心每一步的父节点即可完成回溯。
 
 class AStar:
-    def __init__(self, map):
+    def __init__(self, map: fixed_map.FixedMap, start: point.Point, end: point.Point):
         self.map = map
         self.open_set = []
         self.close_set = []
+        self.start = start
+        self.end = end
 
     def BaseCost(self, p):
-        x_dis = p.x
-        y_dis = p.y
+        x_dis = math.fabs(p.x - self.start.x)
+        y_dis = math.fabs(p.y - self.start.y)
         # Distance to start point
         return x_dis + y_dis + (np.sqrt(2) - 2) * min(x_dis, y_dis)
 
     def HeuristicCost(self, p):
-        x_dis = self.map.size - 1 - p.x
-        y_dis = self.map.size - 1 - p.y
+        x_dis = math.fabs(p.x - self.end.x)
+        y_dis = math.fabs(p.y - self.end.y)
         # Distance to end point
         return x_dis + y_dis + (np.sqrt(2) - 2) * min(x_dis, y_dis)
 
@@ -38,7 +45,7 @@ class AStar:
     def IsValidPoint(self, x, y):
         if x < 0 or y < 0:
             return False
-        if x >= self.map.size or y >= self.map.size:
+        if x >= self.map.width or y >= self.map.height:
             return False
         return not self.map.IsObstacle(x, y)
 
@@ -55,10 +62,10 @@ class AStar:
         return self.IsInPointList(p, self.close_set)
 
     def IsStartPoint(self, p):
-        return p.x == 0 and p.y == 0
+        return p.x == self.start.x and p.y == self.end.y
 
     def IsEndPoint(self, p):
-        return p.x == self.map.size - 1 and p.y == self.map.size - 1
+        return p.x == self.end.x and p.y == self.end.y
 
     def SaveImage(self, plt):
         millis = int(round(time.time() * 1000))
@@ -109,7 +116,7 @@ class AStar:
     def RunAndSaveImage(self, ax, plt):
         start_time = time.time()
 
-        start_point = point.Point(0, 0)
+        start_point = self.start
         start_point.cost = 0
         self.open_set.append(start_point)
 
